@@ -2,6 +2,10 @@ import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
+import pdfkit
+import tempfile
+from datetime import datetime
+import os
 
 # Set page config
 st.set_page_config(page_title="Allocation Demo", page_icon="📈", layout="wide")
@@ -108,3 +112,71 @@ st.sidebar.markdown(f"""
 
 *Note: This is a simplified demonstration using simulated data. Actual investment results may vary significantly.*
 """)
+
+# Add PDF generation function after the markdown explanation
+def generate_pdf():
+    # Create a temporary HTML file
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.html') as f:
+        # Generate HTML content
+        html_content = f"""
+        <html>
+            <head>
+                <title>Portfolio Allocation Report</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                    h1 {{ color: #2e4053; }}
+                    .date {{ color: #7f8c8d; margin-bottom: 30px; }}
+                </style>
+            </head>
+            <body>
+                <h1>Portfolio Allocation Report</h1>
+                <div class="date">Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
+                <h2>Portfolio Settings</h2>
+                <ul>
+                    <li>Risk Level: {risk_level}/10</li>
+                    <li>Investment Period: {investment_period}</li>
+                </ul>
+                <h2>Understanding the Growth Comparison</h2>
+                <h3>Conservative Portfolio</h3>
+                <ul>
+                    <li>Lower volatility</li>
+                    <li>More stable growth</li>
+                    <li>Typically higher allocation to bonds and stable assets</li>
+                </ul>
+                <h3>Aggressive Portfolio</h3>
+                <ul>
+                    <li>Higher volatility</li>
+                    <li>Potential for higher returns</li>
+                    <li>Typically higher allocation to stocks and growth assets</li>
+                </ul>
+            </body>
+        </html>
+        """
+        f.write(html_content.encode('utf-8'))
+        html_path = f.name
+
+    # Generate PDF from HTML
+    pdf_path = html_path.replace('.html', '.pdf')
+    try:
+        pdfkit.from_file(html_path, pdf_path)
+        with open(pdf_path, 'rb') as pdf_file:
+            pdf_data = pdf_file.read()
+        # Clean up temporary files
+        os.unlink(html_path)
+        os.unlink(pdf_path)
+        return pdf_data
+    except Exception as e:
+        st.error(f"Error generating PDF: {str(e)}")
+        return None
+
+# Add download button at the bottom of the page
+st.markdown("---")
+if st.button("Generate and Download PDF Report"):
+    pdf_data = generate_pdf()
+    if pdf_data:
+        st.download_button(
+            label="Download PDF Report",
+            data=pdf_data,
+            file_name=f"portfolio_allocation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+            mime="application/pdf"
+        )
